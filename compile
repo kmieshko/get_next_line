@@ -1,0 +1,1 @@
+gcc main2.c get_next_line.c libft/ft_strdel.c libft/ft_strlen.c libft/ft_strncpy.c libft/ft_strnew.c libft/ft_strsub.c
