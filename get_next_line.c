@@ -3,15 +3,27 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: kmieshko <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: pbondoer <pbondoer@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2018/01/12 14:04:04 by kmieshko          #+#    #+#             */
-/*   Updated: 2018/01/12 14:04:06 by kmieshko         ###   ########.fr       */
+/*   Created: 2016/02/16 19:11:50 by pbondoer          #+#    #+#             */
+/*   Updated: 2017/12/06 04:44:01 by pbondoer         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <unistd.h>
 #include <stdio.h>
-#include "get_next_line.h"
+#include "libft/libft.h"
+
+#define BUFF_SIZE 100
+
+typedef struct		s_gnl
+{
+	void			*content;
+	size_t			content_size;
+	struct s_gnl	*next;
+	int				fd;
+	int				i;
+}					t_gnl;
 
 char	*join(char *s1, char *s2)
 {
@@ -39,81 +51,89 @@ char	*join(char *s1, char *s2)
 	return (arr);
 }
 
-t_gnl	endl(t_gnl gnl)
+static t_gnl	*create_gnl(t_gnl **gnl, char *buf, int fd)
 {
-	size_t	i;
+	t_gnl	*tmp;
 
-	i = 0;
-	while (gnl.buf[i] != '\0')
+	tmp = *gnl;
+	while (tmp && tmp->fd != fd)
+		tmp = tmp->next;
+	if (tmp)
 	{
-		printf("buf[%zu] = %c\n", i, gnl.buf[i]);
-		if (gnl.buf[i + 1] == '\n')
-		{
-			printf("_i_buf[%zu] = %c\n", i, gnl.buf[i]);
-			gnl.flag = 1;
-			i++;
-			printf("_i_buf[%zu] = %c\n", i, gnl.buf[i]);
-			break;
-		}
-		i++;
-	}
-	if (gnl.flag == 1)
-	{
-		if (gnl.tmp == NULL)
-		{
-			printf("flag = 1 && tmp == NULL\n");
-			gnl.tmp = ft_strsub(gnl.buf, 0, i);
-			printf("gnl.tmp %s\n", gnl.tmp);
-			gnl.tmp[i] = '\0';
-		}
-		else
-		{
-			printf("flag = 1 && tmp != NULL\n");
-			gnl.tmp = join(gnl.tmp, ft_strsub(gnl.buf, i + 1, ft_strlen(gnl.buf) - i));
-			printf("gnl.tmp %s\n", gnl.tmp);
-			gnl.tmp[i] = '\0';
-		}
-		if (i < ft_strlen(gnl.buf))
-		{
-			printf("flag = 1 && i < ft_strlen(gnl.buf)\n");
-			gnl.buf = ft_strsub(gnl.buf, i + 1, ft_strlen(gnl.buf) - i);
-			endl(gnl);
-			printf("gnl.tmp %s\n", gnl.tmp);
-		}
+		if (!(tmp->content = join((char *)tmp->content, buf)))
+			return (NULL);
+		tmp->content_size = ft_strlen(tmp->content);
 	}
 	else
 	{
-		printf("flag = 0 && i => ft_strlen(gnl.buf)\n");
-		if (gnl.tmp == NULL)
-		{
-			printf("CREATE GNL.TMP!\n");
-			gnl.tmp = ft_strnew(i);
-		}
-		gnl.tmp = join(gnl.tmp, gnl.buf);
-		printf("gnl.tmp %s\n", gnl.tmp);
+		if (!(tmp = (t_gnl *)ft_lstnew((void *)buf, ft_strlen(buf))))
+			return (NULL);
+		tmp->fd = fd;
+		ft_lstadd((t_list **)gnl, (t_list *)tmp);
 	}
-	//if (i < ft_strlen(gnl.buf))
-	//	endl(gnl);
-	return (gnl);
+	return (tmp);
 }
-	
-int	get_next_line(int fd, char **line)
+
+char		*endl(t_gnl *gnl)
 {
-	t_gnl	gnl;
+	int 	i;
+	char	*buf;
+	char	*arr;
+
+	i = 0;
+	buf = gnl->content;
+	while (buf[i] != '\0')
+	{
+		if (buf[i] == '\n')
+		{
+			i++;
+			break ;
+		}
+		i++;
+	}
+	arr = ft_strsub(buf, 0, i);
+	ft_strdel(&buf);
+	return (arr);
+}
+
+int			get_next_line(int const fd, char **line)
+{
+	static t_gnl	*gnl;
+	char			*buf;
+	char			*str;
+	int				i;
 
 	if (fd < 0 || line == NULL || BUFF_SIZE < 1)
 		return (-1);
-	gnl.fd = fd;
-	gnl.i = 0;
-	gnl.buf = ft_strnew(BUFF_SIZE);
-	gnl.tmp = NULL;
-	while (read(gnl.fd, gnl.buf, BUFF_SIZE) != '\0')
+	buf = ft_strnew(BUFF_SIZE);
+	while (read(fd, buf, BUFF_SIZE))
 	{
-		gnl = endl(gnl);
-		gnl.i++;
+		gnl = create_gnl(&gnl, buf, fd);
+		if (ft_strchr(gnl->content, '\n') != NULL)
+		{
+			if (!(str = endl(gnl)))
+				return (0);
+			i = ft_strlen(str);
+			gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
+			*line = str;
+			gnl->content_size = ft_strlen(gnl->content);
+			//ft_strdel(&str);
+			ft_strdel(&buf);
+			return (1);
+		}
 	}
-	if (gnl.i == 0)
-		return (0);
-	ft_strdel(&gnl.buf);
-	return (1);
+	if (gnl->content_size > 0)
+	{
+		if (!(str = endl(gnl)))
+			return (0);
+		i = ft_strlen(str);
+		gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
+		*line = str;
+		gnl->content_size = ft_strlen(gnl->content);
+		//ft_strdel(&str);
+		ft_strdel(&buf);
+		return (1);
+	}
+	ft_strdel(&buf);
+	return (0);
 }
