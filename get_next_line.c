@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include "libft/libft.h"
 
-#define BUFF_SIZE 100
+#define BUFF_SIZE 32
 
 typedef struct		s_gnl
 {
@@ -22,7 +22,6 @@ typedef struct		s_gnl
 	size_t			content_size;
 	struct s_gnl	*next;
 	int				fd;
-	int				i;
 }					t_gnl;
 
 char	*join(char *s1, char *s2)
@@ -91,6 +90,7 @@ char		*endl(t_gnl *gnl)
 		}
 		i++;
 	}
+	i = i == 1 ? i + 1 : i;
 	arr = ft_strsub(buf, 0, i);
 	ft_strdel(&buf);
 	return (arr);
@@ -117,7 +117,6 @@ int			get_next_line(int const fd, char **line)
 			gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
 			*line = str;
 			gnl->content_size = ft_strlen(gnl->content);
-			//ft_strdel(&str);
 			ft_strdel(&buf);
 			return (1);
 		}
@@ -130,10 +129,13 @@ int			get_next_line(int const fd, char **line)
 		gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
 		*line = str;
 		gnl->content_size = ft_strlen(gnl->content);
-		//ft_strdel(&str);
 		ft_strdel(&buf);
 		return (1);
 	}
 	ft_strdel(&buf);
+	if (*line != NULL)
+	{
+		*line = "\0";
+	}
 	return (0);
 }
