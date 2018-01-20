@@ -96,12 +96,27 @@ char		*endl(t_gnl *gnl)
 	return (arr);
 }
 
+int		fill_line(t_gnl *gnl, char ** line, char *buf)
+{
+	int		i;
+	char	*str;
+
+	i = 0;
+	if (!(str = endl(gnl)))
+		return (0);
+	i = ft_strlen(str);
+	gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
+	*line = str;
+	gnl->content_size = ft_strlen(gnl->content);
+	ft_strdel(&buf);
+	return (1);
+}
+
+
 int			get_next_line(int const fd, char **line)
 {
 	static t_gnl	*gnl;
 	char			*buf;
-	char			*str;
-	int				i;
 
 	if (fd < 0 || line == NULL || BUFF_SIZE < 1)
 		return (-1);
@@ -111,31 +126,21 @@ int			get_next_line(int const fd, char **line)
 		gnl = create_gnl(&gnl, buf, fd);
 		if (ft_strchr(gnl->content, '\n') != NULL)
 		{
-			if (!(str = endl(gnl)))
+			if (fill_line(gnl, line, buf) == 1)
+				return (1);
+			else
 				return (0);
-			i = ft_strlen(str);
-			gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
-			*line = str;
-			gnl->content_size = ft_strlen(gnl->content);
-			ft_strdel(&buf);
-			return (1);
 		}
 	}
 	if (gnl->content_size > 0)
 	{
-		if (!(str = endl(gnl)))
+		if (fill_line(gnl, line, buf) == 1)
+			return (1);
+		else
 			return (0);
-		i = ft_strlen(str);
-		gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
-		*line = str;
-		gnl->content_size = ft_strlen(gnl->content);
-		ft_strdel(&buf);
-		return (1);
 	}
 	ft_strdel(&buf);
 	if (*line != NULL)
-	{
 		*line = "\0";
-	}
 	return (0);
 }
