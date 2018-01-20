@@ -10,21 +10,9 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <unistd.h>
-#include <stdio.h>
-#include "libft/libft.h"
+#include "get_next_line.h"
 
-#define BUFF_SIZE 32
-
-typedef struct		s_gnl
-{
-	void			*content;
-	size_t			content_size;
-	struct s_gnl	*next;
-	int				fd;
-}					t_gnl;
-
-char	*join(char *s1, char *s2)
+static char		*join(char *s1, char *s2)
 {
 	size_t		i;
 	size_t		j;
@@ -73,7 +61,7 @@ static t_gnl	*create_gnl(t_gnl **gnl, char *buf, int fd)
 	return (tmp);
 }
 
-char		*endl(t_gnl *gnl)
+static char		*endl(t_gnl *gnl)
 {
 	int 	i;
 	char	*buf;
@@ -96,22 +84,29 @@ char		*endl(t_gnl *gnl)
 	return (arr);
 }
 
-int		fill_line(t_gnl *gnl, char ** line, char *buf)
+static int		fill_line(t_gnl *gnl, char ** line, char *buf)
 {
 	int		i;
 	char	*str;
+	char	*tmp;
 
 	i = 0;
 	if (!(str = endl(gnl)))
 		return (0);
 	i = ft_strlen(str);
 	gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
-	*line = str;
 	gnl->content_size = ft_strlen(gnl->content);
 	ft_strdel(&buf);
+	if (i > 1)
+	{
+		tmp = ft_strsub(str, 0, i - 1);
+		ft_strdel(&str);
+		*line = tmp;
+		return (1);
+	}
+	*line = str;
 	return (1);
 }
-
 
 int			get_next_line(int const fd, char **line)
 {
