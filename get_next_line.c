@@ -10,6 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <stdio.h>
 #include "get_next_line.h"
 
 static char		*join(char *s1, char *s2)
@@ -53,7 +54,7 @@ static t_gnl	*create_gnl(t_gnl **gnl, char *buf, int fd)
 	}
 	else
 	{
-		if (!(tmp = (t_gnl *)ft_lstnew((void *)buf, ft_strlen(buf))))
+		if (!(tmp = (t_gnl *)ft_lstnew((void *)buf, ft_strlen(buf) + 1)))
 			return (NULL);
 		tmp->fd = fd;
 		ft_lstadd((t_list **)gnl, (t_list *)tmp);
@@ -61,79 +62,51 @@ static t_gnl	*create_gnl(t_gnl **gnl, char *buf, int fd)
 	return (tmp);
 }
 
-static char		*endl(t_gnl *gnl)
+int		check(t_gnl *gnl, char **line)
 {
-	int 	i;
 	char	*buf;
 	char	*arr;
+	int		i;
 
 	i = 0;
 	buf = gnl->content;
-	while (buf[i] != '\0')
-	{
-		if (buf[i] == '\n')
-		{
-			i++;
-			break ;
-		}
+
+	if (buf == NULL)
+		return (0);
+	while (buf[i] != '\n' && buf[i])
 		i++;
-	}
-	i = i == 1 ? i + 1 : i;
+	if (i == 0 && ft_strstr(buf, "\n") == NULL)
+		return (0);
 	arr = ft_strsub(buf, 0, i);
 	ft_strdel(&buf);
-	return (arr);
-}
-
-static int		fill_line(t_gnl *gnl, char ** line, char *buf)
-{
-	int		i;
-	char	*str;
-	char	*tmp;
-
-	i = 0;
-	if (!(str = endl(gnl)))
-		return (0);
-	i = ft_strlen(str);
-	gnl->content = ft_strsub(gnl->content, i, gnl->content_size - i);
-	gnl->content_size = ft_strlen(gnl->content);
-	ft_strdel(&buf);
-	if (i > 1)
-	{
-		tmp = ft_strsub(str, 0, i - 1);
-		ft_strdel(&str);
-		*line = tmp;
-		return (1);
-	}
-	*line = str;
+	*line = arr;
+	gnl->content = ft_strsub(gnl->content, i + 1, gnl->content_size);
+	gnl->content_size = gnl->content_size - i - 1;
 	return (1);
 }
 
 int			get_next_line(int const fd, char **line)
 {
 	static t_gnl	*gnl;
-	char			*buf;
+	int j;
+	char	*buf;
 
 	if (fd < 0 || line == NULL || BUFF_SIZE < 1)
 		return (-1);
 	buf = ft_strnew(BUFF_SIZE);
-	while (read(fd, buf, BUFF_SIZE))
+	while ((j = read(fd, buf, BUFF_SIZE)))
 	{
+		buf[j] = '\0';
 		gnl = create_gnl(&gnl, buf, fd);
-		if (ft_strchr(gnl->content, '\n') != NULL)
+		if (ft_strchr(buf, '\n') != NULL)
 		{
-			if (fill_line(gnl, line, buf) == 1)
+			if (check(gnl, line) == 1)
 				return (1);
-			else
-				return (0);
 		}
 	}
 	if (gnl->content_size > 0)
-	{
-		if (fill_line(gnl, line, buf) == 1)
+		if (check(gnl, line) == 1)
 			return (1);
-		else
-			return (0);
-	}
 	ft_strdel(&buf);
 	if (*line != NULL)
 		*line = "\0";
