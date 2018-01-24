@@ -15,8 +15,6 @@
 
 # define BUFF_SIZE 32
 
-# include <string.h>
-# include <fcntl.h>
 # include "libft/libft.h"
 
 typedef struct		s_gnl
@@ -27,6 +25,6 @@ typedef struct		s_gnl
 	int				fd;
 }					t_gnl;
 
-int		get_next_line(const int fd, char **line);
+int					get_next_line(const int fd, char **line);
 
 #endif
