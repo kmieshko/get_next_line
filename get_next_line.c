@@ -3,112 +3,122 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pbondoer <pbondoer@student.42.fr>          +#+  +:+       +#+        */
+/*   By: kmieshko <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2016/02/16 19:11:50 by pbondoer          #+#    #+#             */
-/*   Updated: 2017/12/06 04:44:01 by pbondoer         ###   ########.fr       */
+/*   Created: 2018/01/24 16:12:28 by kmieshko          #+#    #+#             */
+/*   Updated: 2018/01/24 16:12:30 by kmieshko         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <stdio.h>
 #include "get_next_line.h"
 
 static char		*join(char *s1, char *s2)
 {
-	size_t		i;
-	size_t		j;
-	char		*arr;
+	char	*arr;
+	size_t	len1;
+	size_t	len2;
 
-	i = 0;
-	j = 0;
-	if (!s1 || !s2 || !(arr = ft_strnew(ft_strlen(s1) + ft_strlen(s2) + 1)))
+	if (s1 == NULL && s2 == NULL)
 		return (NULL);
-	while (i < ft_strlen(s1))
-	{
-		arr[i] = s1[i];
-		i++;
-	}
-	while (i < ft_strlen(s1) + ft_strlen(s2))
-	{
-		arr[i] = s2[j];
-		i++;
-		j++;
-	}
-	arr[i] = '\0';
-	ft_strdel(&s1);
+	len1 = s1 == NULL ? 0 : ft_strlen(s1);
+	len2 = s2 == NULL ? 0 : ft_strlen(s2);
+	if (!(arr = ft_strnew(len1 + len2 + 1)))
+		return (NULL);
+	(len1 == 0) ? arr : ft_strcpy(arr, s1);
+	(len2 == 0) ? arr : ft_strcpy((arr + len1), s2);
 	return (arr);
 }
 
-static t_gnl	*create_gnl(t_gnl **gnl, char *buf, int fd)
+static t_gnl	*create_gnl(t_gnl **gnl, int fd, char *buf)
 {
 	t_gnl	*tmp;
+	char	*str;
 
 	tmp = *gnl;
 	while (tmp && tmp->fd != fd)
 		tmp = tmp->next;
-	if (tmp)
+	if (tmp == NULL)
 	{
-		if (!(tmp->content = join((char *)tmp->content, buf)))
-			return (NULL);
-		tmp->content_size = ft_strlen(tmp->content);
-	}
-	else
-	{
-		if (!(tmp = (t_gnl *)ft_lstnew((void *)buf, ft_strlen(buf) + 1)))
+		if (!(tmp = (t_gnl *)ft_lstnew((void *)buf, (ft_strlen(buf) + 1))))
 			return (NULL);
 		tmp->fd = fd;
 		ft_lstadd((t_list **)gnl, (t_list *)tmp);
 	}
+	else
+	{
+		if (!(str = join((char *)tmp->content, buf)))
+			return (NULL);
+		free(tmp->content);
+		tmp->content = (void *)str;
+		tmp->content_size = ft_strlen(str) + 1;
+	}
 	return (tmp);
 }
 
-int		check(t_gnl *gnl, char **line)
+static char		*fill_line(t_gnl **gnl, int fd, char *buf)
 {
-	char	*buf;
+	t_gnl	*tmp;
 	char	*arr;
+	char	*str;
 	int		i;
 
+	tmp = *gnl;
 	i = 0;
-	buf = gnl->content;
-
-	if (buf == NULL)
-		return (0);
-	while (buf[i] != '\n' && buf[i])
+	while (tmp && tmp->fd != fd)
+		tmp = tmp->next;
+	arr = tmp->content;
+	if (arr == NULL)
+		return (NULL);
+	while (arr[i] != '\n' && arr[i])
 		i++;
-	if (i == 0 && ft_strstr(buf, "\n") == NULL)
-		return (0);
-	arr = ft_strsub(buf, 0, i);
-	ft_strdel(&buf);
-	*line = arr;
-	gnl->content = ft_strsub(gnl->content, i + 1, gnl->content_size);
-	gnl->content_size = gnl->content_size - i - 1;
-	return (1);
-}
-
-int			get_next_line(int const fd, char **line)
-{
-	static t_gnl	*gnl;
-	int j;
-	char	*buf;
-
-	if (fd < 0 || line == NULL || BUFF_SIZE < 1)
-		return (-1);
-	buf = ft_strnew(BUFF_SIZE);
-	while ((j = read(fd, buf, BUFF_SIZE)))
+	if (!(str = ft_strsub(arr, 0, i)))
+		return (NULL);
+	if ((ft_strstr(arr, "\n")) != NULL)
 	{
-		buf[j] = '\0';
-		gnl = create_gnl(&gnl, buf, fd);
-		if (ft_strchr(buf, '\n') != NULL)
+		if (ft_strlen(ft_strstr(arr, "\n") + 1) == 0)
 		{
-			if (check(gnl, line) == 1)
-				return (1);
+			tmp->content = NULL;
+			tmp->content_size = 0;
+		}
+		else
+		{
+			tmp->content = ft_strsub(arr, i + 1, tmp->content_size);
+			tmp->content_size = tmp->content_size - i - 1;
 		}
 	}
-	if (gnl->content_size > 0)
-		if (check(gnl, line) == 1)
-			return (1);
+	else
+	{
+		tmp->content = NULL;
+		tmp->content_size = 0;
+	}
 	ft_strdel(&buf);
-	if (*line != NULL)
-		*line = "\0";
+	ft_strdel(&arr);
+	return (str);
+}
+
+int				get_next_line(int fd, char **line)
+{
+	static t_gnl	*gnl;
+	char			*buf;
+	int				i;
+
+	if (fd < 0 || line == NULL || BUFF_SIZE < 1 ||
+		!(buf = ft_strnew(BUFF_SIZE)) || (read(fd, buf, 0) < 0))
+		return (-1);
+	while ((i = read(fd, buf, BUFF_SIZE)) != 0)
+	{
+		buf[i] = '\0';
+		gnl = create_gnl(&gnl, fd, buf);
+		if (ft_strstr(gnl->content, "\n") != NULL)
+		{
+			*line = fill_line(&gnl, fd, buf);
+			return (1);
+		}
+		if (gnl == NULL)
+			return (-1);
+	}
+	if ((*line = fill_line(&gnl, fd, buf)) != NULL)
+		return (1);
+	ft_strdel(&buf);
 	return (0);
 }
